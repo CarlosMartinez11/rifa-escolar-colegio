@@ -173,6 +173,14 @@ function cerrarSesionAdmin() {
   mostrarSeccion("consulta");
 }
 
+function restablecerPassword() {
+  if (!confirm("¿Restablecer la contraseña de administración a rifa2026?")) return;
+  state.password = DEFAULT_PASSWORD;
+  guardarEstado();
+  document.getElementById("admin-password").value = "";
+  mostrarToast("Contraseña restablecida a rifa2026.");
+}
+
 function renderTablaBoletos() {
   const tbody = document.getElementById("tabla-boletos");
   const vendidos = state.boletos.filter(b => b.vendido).length;
