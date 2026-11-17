@@ -2,6 +2,8 @@
 
 Aplicación web estática, responsive y sin backend para consultar ganadores de una rifa escolar usando resultados oficiales de Lotería Nacional.
 
+La identidad visual utiliza el escudo oficial del Liceo Carl Ransom Rogers y recursos gráficos del sitio institucional.
+
 ## Uso local
 
 Abre `index.html` directamente en un navegador moderno. No requiere instalación ni dependencias.

@@ -5,7 +5,7 @@ const DEFAULT_PASSWORD = "rifa2026";
 
 const estadoInicial = {
   password: DEFAULT_PASSWORD,
-  nombreColegio: "Rifa del Colegio",
+  nombreColegio: "Liceo Carl Ransom Rogers",
   logo: "",
   config: { min: 1, max: 2840, numPremios: 30, premios: [] },
   boletos: [],
@@ -63,7 +63,7 @@ function normalizarEstado(data) {
   })) : [];
   merge.resultadosLoteria = Array.isArray(merge.resultadosLoteria) ? merge.resultadosLoteria : [];
   merge.ganadores = Array.isArray(merge.ganadores) ? merge.ganadores : [];
-  merge.nombreColegio = String(merge.nombreColegio || "Rifa del Colegio");
+  merge.nombreColegio = String(merge.nombreColegio || "Liceo Carl Ransom Rogers");
   merge.logo = typeof merge.logo === "string" ? merge.logo : "";
   recalcularRangoResultados(merge);
   return merge;
@@ -140,8 +140,8 @@ function renderIdentidad() {
     logo.src = state.logo;
     logo.classList.remove("hidden");
   } else {
-    logo.removeAttribute("src");
-    logo.classList.add("hidden");
+    logo.src = "assets/escudo-liceo.png";
+    logo.classList.remove("hidden");
   }
 }
 
@@ -536,7 +536,7 @@ function guardarConfiguracion() {
     return mostrarToast("La cantidad de premios no es válida.");
   }
   const lista = document.getElementById("cfg-lista-premios").value.split("\n").map(v => v.trim()).filter(Boolean);
-  state.nombreColegio = document.getElementById("cfg-nombre").value.trim() || "Rifa del Colegio";
+  state.nombreColegio = document.getElementById("cfg-nombre").value.trim() || "Liceo Carl Ransom Rogers";
   state.config = { min, max, numPremios, premios: lista.length ? lista : Array.from({ length: numPremios }, (_, i) => `Premio ${i + 1}`) };
   const nuevaPassword = document.getElementById("cfg-password").value.trim();
   if (nuevaPassword) state.password = nuevaPassword;

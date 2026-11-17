@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#16324f">
   <meta name="description" content="Consulta oficial de resultados de la rifa escolar">
+  <link rel="icon" type="image/jpeg" href="assets/huella-favicon.jpeg">
+  <link rel="icon" type="image/png" href="assets/favicon-lobo.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Liceo Carl Ransom Rogers | Rifa escolar">
+  <meta property="og:description" content="Consulta los resultados oficiales de la rifa del Liceo Carl Ransom Rogers.">
+  <meta property="og:image" content="assets/escudo-liceo.png">
   <title>Rifa escolar | Consulta de resultados</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,8 +19,8 @@
   <header class="topbar">
     <div class="container topbar__inner">
       <a class="brand" href="#" onclick="mostrarSeccion('consulta'); return false;">
-        <img id="logo-colegio" class="brand__logo hidden" alt="Logo del colegio">
-        <div><strong id="nombre-colegio">Rifa del Colegio</strong><span>Consulta de resultados</span></div>
+        <img id="logo-colegio" class="brand__logo" src="assets/escudo-liceo.png" alt="Escudo del Liceo Carl Ransom Rogers">
+        <div><strong id="nombre-colegio">Liceo Carl Ransom Rogers</strong><span>Consulta oficial de la rifa</span></div>
       </a>
       <nav class="nav" aria-label="Navegación principal">
         <button id="nav-consulta" class="nav__button active" type="button" onclick="mostrarSeccion('consulta')">Consultar boleto</button>
@@ -111,7 +118,7 @@
       </div>
     </section>
   </main>
-  <footer class="footer"><div class="container">Sistema transparente de rifa escolar · Resultados basados en Sorteos Oficiales de Lotería Nacional</div></footer>
+  <footer class="footer"><div class="container">Liceo Carl Ransom Rogers · Sistema transparente de rifa escolar · Resultados basados en Sorteos Oficiales de Lotería Nacional</div></footer>
   <dialog id="dialog-boleto" class="dialog">
     <form id="form-boleto">
       <div class="dialog__heading"><h2 id="dialog-boleto-titulo">Agregar boleto</h2><button type="button" class="icon-button" onclick="cerrarDialogoBoleto()" aria-label="Cerrar">×</button></div>
