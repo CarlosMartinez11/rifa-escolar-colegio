@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16324f">
+  <meta name="description" content="Consulta oficial de resultados de la rifa escolar">
+  <title>Rifa escolar | Consulta de resultados</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="brand" href="#" onclick="mostrarSeccion('consulta'); return false;">
+        <img id="logo-colegio" class="brand__logo hidden" alt="Logo del colegio">
+        <div><strong id="nombre-colegio">Rifa del Colegio</strong><span>Consulta de resultados</span></div>
+      </a>
+      <nav class="nav" aria-label="Navegación principal">
+        <button id="nav-consulta" class="nav__button active" type="button" onclick="mostrarSeccion('consulta')">Consultar boleto</button>
+        <button id="nav-resultados" class="nav__button" type="button" onclick="mostrarSeccion('resultados')">Ganadores</button>
+        <button id="nav-admin" class="nav__button nav__button--admin" type="button" onclick="mostrarSeccion('admin')">Administración</button>
+      </nav>
+    </div>
+  </header>
+  <main class="container main">
+    <section id="section-consulta" class="section">
+      <div class="hero">
+        <div><p class="eyebrow">Consulta pública</p><h1>¿Tu boleto resultó ganador?</h1><p>Ingresa cualquiera de los dos números impresos en tu boleto físico.</p></div>
+        <div class="hero__status" id="estado-sorteo">Sorteo pendiente</div>
+      </div>
+      <div class="card consulta-card">
+        <form id="form-consulta" class="search-form" novalidate>
+          <label for="input-folio">Número del boleto</label>
+          <div class="search-form__row">
+            <input id="input-folio" name="folio" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Ej. 1381" aria-describedby="ayuda-folio">
+            <button class="button button--primary" type="submit">Consultar</button>
+          </div>
+          <small id="ayuda-folio">Escribe las cuatro cifras de tu boleto.</small>
+        </form>
+        <div id="resultado-consulta" class="result" aria-live="polite"></div>
+      </div>
+      <div class="card mechanic">
+        <h2>¿Cómo se determinan los ganadores?</h2>
+        <ol><li>Se utilizan los números oficiales publicados por Lotería Nacional.</li><li>Se toman las últimas cuatro cifras de cada número premiado.</li><li>Solo participan los boletos marcados como vendidos y pagados.</li><li>Cada boleto puede ganar una sola vez, aunque tenga dos números.</li></ol>
+      </div>
+    </section>
+    <section id="section-resultados" class="section hidden">
+      <div class="section-heading">
+        <div><p class="eyebrow">Resultados oficiales</p><h1>Lista de ganadores</h1><p id="info-sorteo">Aún no se han cargado resultados.</p></div>
+        <button id="boton-imprimir" class="button button--secondary hidden" type="button" onclick="imprimirGanadores()">Imprimir lista</button>
+      </div>
+      <div id="lista-ganadores" class="winner-list"></div>
+    </section>
+    <section id="section-admin" class="section hidden">
+      <div id="admin-login" class="login-card card">
+        <p class="eyebrow">Acceso restringido</p><h1>Administración</h1>
+        <form id="form-login"><label for="admin-password">Contraseña</label><input id="admin-password" type="password" autocomplete="current-password"><button class="button button--primary" type="submit">Entrar</button></form>
+      </div>
+      <div id="admin-panel" class="hidden">
+        <div class="admin-heading"><div><p class="eyebrow">Panel de administración</p><h1>Gestión de la rifa</h1></div><button class="button button--ghost" type="button" onclick="cerrarSesionAdmin()">Cerrar sesión</button></div>
+        <div class="tabs card" role="tablist">
+          <button class="tab active" id="tab-boletos" type="button" role="tab" onclick="mostrarTabAdmin('boletos')">Boletos vendidos</button>
+          <button class="tab" id="tab-resultados" type="button" role="tab" onclick="mostrarTabAdmin('resultados')">Resultados</button>
+          <button class="tab" id="tab-ganadores" type="button" role="tab" onclick="mostrarTabAdmin('ganadores')">Ganadores</button>
+          <button class="tab" id="tab-config" type="button" role="tab" onclick="mostrarTabAdmin('config')">Configuración</button>
+        </div>
+        <div id="admin-tab-boletos" class="card admin-card">
+          <div class="toolbar">
+            <div><h2>Boletos</h2><p id="contador-boletos" class="muted"></p></div>
+            <div class="toolbar__actions">
+              <button class="button button--secondary" type="button" onclick="abrirDialogoBoleto()">Agregar boleto</button>
+              <button class="button button--secondary" type="button" onclick="document.getElementById('file-boletos').click()">Subir CSV</button>
+              <button class="button button--ghost" type="button" onclick="exportarBoletos()">Exportar CSV</button>
+              <input id="file-boletos" class="hidden" type="file" accept=".csv,text/csv" onchange="cargarCSVBoletos(event)">
+            </div>
+          </div>
+          <p class="csv-format">Formato: <code>id,numeroA,numeroB,vendido,nombre,telefono</code></p>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>Núm. A</th><th>Núm. B</th><th>Estado</th><th>Titular</th><th></th></tr></thead><tbody id="tabla-boletos"></tbody></table></div>
+        </div>
+        <div id="admin-tab-resultados" class="card admin-card hidden">
+          <h2>Números oficiales</h2>
+          <label for="nombre-sorteo">Nombre o fecha del sorteo</label><input id="nombre-sorteo" type="text" placeholder="Sorteo Mayor 4035 - 17 noviembre 2026">
+          <label for="input-resultados">Números premiados</label><textarea id="input-resultados" rows="10" placeholder="11324&#10;19317&#10;06215&#10;33520"></textarea>
+          <button class="button button--primary" type="button" onclick="guardarResultados()">Guardar resultados</button><div id="preview-resultados" class="notice hidden"></div>
+        </div>
+        <div id="admin-tab-ganadores" class="card admin-card hidden">
+          <h2>Asignación de premios</h2><p>Se asigna un premio por boleto vendido y se conserva el orden oficial de los resultados.</p>
+          <button class="button button--success" type="button" onclick="calcularGanadores()">Calcular ganadores</button>
+          <button class="button button--ghost" type="button" onclick="borrarGanadores()">Borrar ganadores</button>
+          <div id="resultado-calculo" class="calculation"></div>
+        </div>
+        <div id="admin-tab-config" class="card admin-card hidden">
+          <h2>Configuración</h2>
+          <div class="grid">
+            <div><label for="cfg-nombre">Nombre del colegio</label><input id="cfg-nombre" type="text"></div>
+            <div><label for="cfg-min">Número mínimo</label><input id="cfg-min" type="number" min="0" max="9999"></div>
+            <div><label for="cfg-max">Número máximo</label><input id="cfg-max" type="number" min="0" max="9999"></div>
+            <div><label for="cfg-premios">Cantidad de premios</label><input id="cfg-premios" type="number" min="1" max="500"></div>
+            <div><label for="cfg-password">Nueva contraseña</label><input id="cfg-password" type="password" placeholder="Vacía para no cambiar"></div>
+            <div><label for="file-logo">Logo del colegio</label><input id="file-logo" type="file" accept="image/png,image/jpeg,image/webp"></div>
+          </div>
+          <label for="cfg-lista-premios">Lista de premios, uno por línea</label><textarea id="cfg-lista-premios" rows="8"></textarea>
+          <div class="toolbar__actions">
+            <button class="button button--primary" type="button" onclick="guardarConfiguracion()">Guardar configuración</button>
+            <button class="button button--secondary" type="button" onclick="exportarTodo()">Exportar respaldo JSON</button>
+            <button class="button button--secondary" type="button" onclick="document.getElementById('file-import').click()">Importar respaldo</button>
+            <input id="file-import" class="hidden" type="file" accept=".json,application/json" onchange="importarTodo(event)">
+            <button class="button button--danger" type="button" onclick="resetearTodo()">Resetear todo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><div class="container">Sistema transparente de rifa escolar · Resultados basados en Sorteos Oficiales de Lotería Nacional</div></footer>
+  <dialog id="dialog-boleto" class="dialog">
+    <form id="form-boleto">
+      <div class="dialog__heading"><h2 id="dialog-boleto-titulo">Agregar boleto</h2><button type="button" class="icon-button" onclick="cerrarDialogoBoleto()" aria-label="Cerrar">×</button></div>
+      <input id="boleto-index" type="hidden">
+      <div class="grid">
+        <div><label for="boleto-id">ID o folio físico</label><input id="boleto-id" type="number" min="1" required></div>
+        <div><label for="boleto-a">Número A</label><input id="boleto-a" type="text" inputmode="numeric" maxlength="4" required></div>
+        <div><label for="boleto-b">Número B</label><input id="boleto-b" type="text" inputmode="numeric" maxlength="4" required></div>
+        <div class="checkbox-row"><input id="boleto-vendido" type="checkbox" checked><label for="boleto-vendido">Vendido y pagado</label></div>
+        <div><label for="boleto-nombre">Nombre del comprador</label><input id="boleto-nombre" type="text"></div>
+        <div><label for="boleto-telefono">Teléfono</label><input id="boleto-telefono" type="tel"></div>
+      </div>
+      <div class="dialog__actions"><button class="button button--ghost" type="button" onclick="cerrarDialogoBoleto()">Cancelar</button><button class="button button--primary" type="submit">Guardar</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
