@@ -542,7 +542,7 @@ function consultarBoleto() {
         <div class="celebration-prize">${escapeHtml(ganador.premioNombre)}</div>
         <div class="celebration-ticket">
           <span>Boleto ganador</span>
-          <strong>#${escapeHtml(boleto.id)}</strong>
+          <strong>${formatearNumero(ganador.numeroGanador)}</strong>
         </div>
       </div>`;
     lanzarConfeti();
@@ -581,7 +581,7 @@ function renderListaGanadores() {
   contenedor.innerHTML = state.ganadores.map(g => `
     <article class="winner-row">
       <div class="winner-row__number">${g.premioNum}</div>
-      <div><h3>${escapeHtml(g.premioNombre)}</h3><p>Boleto ganador: #${escapeHtml(g.boletoId)}</p></div>
+      <div><h3>${escapeHtml(g.premioNombre)}</h3><p>Boleto ganador: ${formatearNumero(g.numeroGanador)}</p></div>
     </article>
   `).join("");
 }
