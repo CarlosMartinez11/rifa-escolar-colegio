@@ -497,7 +497,7 @@ function consultarBoleto() {
     contenedor.innerHTML = `
       <div class="result-card result-card--winner"><div class="result-card__icon">🏆</div><h2>¡Felicidades, ganaste!</h2>
         <p><strong>${escapeHtml(ganador.premioNombre)}</strong></p>
-        <div class="details"><span>Premio número ${ganador.premioNum}</span><span>Número ganador: <strong>${formatearNumero(ganador.numeroGanador)}</strong></span><span>Boleto #${escapeHtml(boleto.id)} · ${formatearNumero(boleto.numeroA)} / ${formatearNumero(boleto.numeroB)}</span></div>
+        <div class="details"><span>Boleto ganador: <strong>#${escapeHtml(boleto.id)}</strong></span></div>
       </div>`;
     return;
   }
@@ -537,7 +537,7 @@ function renderListaGanadores() {
   contenedor.innerHTML = state.ganadores.map(g => `
     <article class="winner-row">
       <div class="winner-row__number">${g.premioNum}</div>
-      <div><h3>${escapeHtml(g.premioNombre)}</h3><p>Número ${formatearNumero(g.numeroGanador)} · Boleto #${escapeHtml(g.boletoId)}${g.nombre && g.nombre !== "Sin nombre" ? ` · ${escapeHtml(g.nombre)}` : ""}</p></div>
+      <div><h3>${escapeHtml(g.premioNombre)}</h3><p>Boleto ganador: #${escapeHtml(g.boletoId)}</p></div>
     </article>
   `).join("");
 }
