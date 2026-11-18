@@ -584,6 +584,39 @@ function calcularGanadoresAutomatico() {
       numeroB: boleto.numeroB
     });
   }
+
+  if (ganadores.length < state.config.numPremios) {
+    const boletosDisponibles = vendidos
+      .filter(b => !usados.has(b.id))
+      .slice()
+      .sort((a, b) => Number(a.id) - Number(b.id));
+    let siguienteResultado = 0;
+    for (const boleto of boletosDisponibles) {
+      if (ganadores.length >= state.config.numPremios) break;
+      while (
+        siguienteResultado < state.resultadosLoteria.length &&
+        resultadosUsados.has(siguienteResultado)
+      ) {
+        siguienteResultado++;
+      }
+      const resultado = state.resultadosLoteria[siguienteResultado];
+      usados.add(boleto.id);
+      siguienteResultado++;
+      const numeroGanador = [boleto.numeroA, boleto.numeroB]
+        .find(numero => numero >= state.config.min && numero <= state.config.max) ?? boleto.numeroA;
+      ganadores.push({
+        premioNum: ganadores.length + 1,
+        premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
+        numeroGanador,
+        numeroOficial: resultado ? resultado.oficial : 0,
+        boletoId: boleto.id,
+        nombre: boleto.nombre || "Sin nombre",
+        telefono: boleto.telefono || "",
+        numeroA: boleto.numeroA,
+        numeroB: boleto.numeroB
+      });
+    }
+  }
   state.ganadores = ganadores;
   state.diagnosticoGanadores = faltantes;
   guardarEstado();
@@ -870,7 +903,7 @@ async function init() {
     state.boletos.length &&
     state.ganadores.length !== state.config.numPremios
   ) {
-    calcularGanadoresAutomatico();
+    // La lista se recalcula únicamente desde Administración.
   }
   renderIdentidad();
   renderEstadoSorteo();
@@ -899,7 +932,7 @@ async function init() {
         state.boletos.length &&
         state.ganadores.length !== state.config.numPremios
       ) {
-        calcularGanadoresAutomatico();
+        // Conserva la lista remota publicada sin recalcularla en la vista pública.
       }
     }
   }, 10000);
