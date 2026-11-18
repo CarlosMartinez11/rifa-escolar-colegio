@@ -461,6 +461,7 @@ function guardarResultados() {
   preview.innerHTML = `Se guardaron ${state.resultadosLoteria.length} números. ${enRango} tienen últimas cuatro cifras dentro del rango configurado.`;
   preview.classList.remove("hidden");
   renderEstadoSorteo();
+  calcularGanadoresAutomatico();
   mostrarToast("Resultados guardados.");
 }
 
@@ -473,6 +474,18 @@ function calcularGanadores() {
     return mostrarToast("Hay folios vendidos duplicados. Corrige los IDs antes de calcular.");
   }
   if (!confirm("¿Calcular y reemplazar la lista actual de ganadores?")) return;
+  calcularGanadoresAutomatico();
+  mostrarToast(`Se asignaron ${state.ganadores.length} premios.`);
+}
+
+function calcularGanadoresAutomatico() {
+  if (!state.resultadosLoteria.length) return;
+  const vendidos = state.boletos.filter(b => b.vendido);
+  if (!vendidos.length) {
+    state.ganadores = [];
+    state.diagnosticoGanadores = [];
+    return;
+  }
   const usados = new Set();
   const resultadosUsados = new Set();
   const ganadores = [];
@@ -531,6 +544,39 @@ function calcularGanadores() {
       premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
       numeroGanador,
       numeroOficial: numeroOficialGanador,
+      boletoId: boleto.id,
+      nombre: boleto.nombre || "Sin nombre",
+      telefono: boleto.telefono || "",
+      numeroA: boleto.numeroA,
+      numeroB: boleto.numeroB
+    });
+  }
+
+  for (let i = 0; i < state.resultadosLoteria.length && ganadores.length < state.config.numPremios; i++) {
+    if (resultadosUsados.has(i)) continue;
+    const resultado = state.resultadosLoteria[i];
+    const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
+      ? resultado.candidatos
+      : generarCandidatosPorRango(resultado.last4, resultado.last3, state.config);
+
+    let boleto = null;
+    let numeroGanador = null;
+    for (const candidato of candidatos) {
+      boleto = vendidos.find(b => !usados.has(b.id) && (b.numeroA === candidato || b.numeroB === candidato));
+      if (boleto) {
+        numeroGanador = candidato;
+        break;
+      }
+    }
+    if (!boleto) continue;
+
+    resultadosUsados.add(i);
+    usados.add(boleto.id);
+    ganadores.push({
+      premioNum: ganadores.length + 1,
+      premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
+      numeroGanador,
+      numeroOficial: resultado.oficial,
       boletoId: boleto.id,
       nombre: boleto.nombre || "Sin nombre",
       telefono: boleto.telefono || "",
@@ -819,6 +865,13 @@ async function init() {
   if (!tieneEstadoRemoto) {
     publicarEstadoRemoto();
   }
+  if (
+    state.resultadosLoteria.length &&
+    state.boletos.length &&
+    state.ganadores.length !== state.config.numPremios
+  ) {
+    calcularGanadoresAutomatico();
+  }
   renderIdentidad();
   renderEstadoSorteo();
   renderTablaBoletos();
@@ -841,6 +894,13 @@ async function init() {
       renderTablaBoletos();
       renderListaGanadores();
       renderResultadoCalculo();
+      if (
+        state.resultadosLoteria.length &&
+        state.boletos.length &&
+        state.ganadores.length !== state.config.numPremios
+      ) {
+        calcularGanadoresAutomatico();
+      }
     }
   }, 10000);
 }
