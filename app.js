@@ -550,10 +550,14 @@ function calcularGanadores() {
 function renderResultadoCalculo() {
   const contenedor = document.getElementById("resultado-calculo");
   if (!state.ganadores.length) {
-    contenedor.innerHTML = `<p class="muted">Aún no hay ganadores calculados.</p>${renderDiagnosticoFaltantes()}`;
+    contenedor.innerHTML = `<p class="muted">Aún no hay ganadores calculados. Premios configurados: ${state.config.numPremios}.</p>${renderDiagnosticoFaltantes()}`;
     return;
   }
-  contenedor.innerHTML = state.ganadores.map(g => `
+  contenedor.innerHTML = `
+    <div class="notice" style="background:#effaf3;color:#166534;margin-bottom:12px">
+      <strong>${state.ganadores.length} de ${state.config.numPremios} premios asignados</strong>
+    </div>
+  ` + state.ganadores.map(g => `
     <div class="calculation-row">
       <div class="calculation-row__number">${g.premioNum}</div>
       <div><strong>${escapeHtml(g.premioNombre)}</strong><div class="muted">Número ${formatearNumero(g.numeroGanador)} · Boleto #${escapeHtml(g.boletoId)} · ${escapeHtml(g.nombre)}</div></div>
@@ -563,9 +567,10 @@ function renderResultadoCalculo() {
 
 function renderDiagnosticoFaltantes() {
   if (!Array.isArray(state.diagnosticoGanadores) || !state.diagnosticoGanadores.length) return "";
+  const faltan = Math.max(0, state.config.numPremios - state.ganadores.length);
   return `
     <div class="notice" style="margin-top:16px;background:#fff7ed;color:#9a4d18">
-      <strong>Faltan ${30 - state.ganadores.length} premio(s).</strong>
+      <strong>Faltan ${faltan} premio(s).</strong>
       <div style="margin-top:8px">
         ${state.diagnosticoGanadores.map(faltante => `
           <div>Número oficial ${escapeHtml(faltante.oficial)} → probó ${faltante.candidatos.map(formatearNumero).join(", ")}</div>
