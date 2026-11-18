@@ -638,10 +638,10 @@ function consultarBoleto() {
   const ganador = state.ganadores.find(g => g.boletoId === boleto.id);
   if (ganador) {
     const medalInfo = {
-      1: { clase: "diamond", icono: "💎", etiqueta: "Primer premio" },
-      2: { clase: "gold", icono: "🥇", etiqueta: "Segundo premio" },
-      3: { clase: "silver", icono: "🥈", etiqueta: "Tercer premio" },
-      4: { clase: "bronze", icono: "🥉", etiqueta: "Cuarto premio" }
+      1: { clase: "diamond", icono: "1", etiqueta: "Primer premio" },
+      2: { clase: "gold", icono: "2", etiqueta: "Segundo premio" },
+      3: { clase: "silver", icono: "3", etiqueta: "Tercer premio" },
+      4: { clase: "bronze", icono: "4", etiqueta: "Cuarto premio" }
     };
     const premioEspecial = medalInfo[ganador.premioNum];
     const claseEspecial = premioEspecial ? ` celebration-${premioEspecial.clase}` : "";
