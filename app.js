@@ -74,11 +74,22 @@ function recalcularRangoResultados(target = state) {
     const oficialTexto = String(r.oficial ?? r.last4 ?? "").replace(/\D/g, "");
     const oficial = oficialTexto ? Number(oficialTexto) : 0;
     const last4 = oficial % 10000;
+    const last3 = oficial % 1000;
+    const coincidencias = [
+      last4,
+      ...(last4 >= target.config.min && last4 <= target.config.max ? [] : [last3])
+    ].filter((numero, index, lista) =>
+      numero >= target.config.min &&
+      numero <= target.config.max &&
+      lista.indexOf(numero) === index
+    );
     return {
       orden: i + 1,
       oficial,
       last4,
-      enRango: last4 >= target.config.min && last4 <= target.config.max
+      last3,
+      candidatos: coincidencias,
+      enRango: coincidencias.length > 0
     };
   });
 }
@@ -359,7 +370,23 @@ function guardarResultados() {
   state.resultadosLoteria = numeros.map((valor, i) => {
     const oficial = Number(valor);
     const last4 = oficial % 10000;
-    return { orden: i + 1, oficial, last4, enRango: last4 >= state.config.min && last4 <= state.config.max };
+    const last3 = oficial % 1000;
+    const coincidencias = [
+      last4,
+      ...(last4 >= state.config.min && last4 <= state.config.max ? [] : [last3])
+    ].filter((numero, index, lista) =>
+      numero >= state.config.min &&
+      numero <= state.config.max &&
+      lista.indexOf(numero) === index
+    );
+    return {
+      orden: i + 1,
+      oficial,
+      last4,
+      last3,
+      candidatos: coincidencias,
+      enRango: coincidencias.length > 0
+    };
   });
   state.nombreSorteo = nombre || `Sorteo ${new Date().toLocaleDateString("es-MX")}`;
   state.ganadores = [];
@@ -383,13 +410,28 @@ function calcularGanadores() {
   for (const resultado of state.resultadosLoteria) {
     if (ganadores.length >= state.config.numPremios) break;
     if (!resultado.enRango) continue;
-    const boleto = vendidos.find(b => !usados.has(b.id) && (b.numeroA === resultado.last4 || b.numeroB === resultado.last4));
+    const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
+      ? resultado.candidatos
+      : [resultado.last4, resultado.last3].filter((numero, index, lista) =>
+          numero >= state.config.min &&
+          numero <= state.config.max &&
+          lista.indexOf(numero) === index
+        );
+    let numeroGanador = null;
+    let boleto = null;
+    for (const candidato of candidatos) {
+      boleto = vendidos.find(b => !usados.has(b.id) && (b.numeroA === candidato || b.numeroB === candidato));
+      if (boleto) {
+        numeroGanador = candidato;
+        break;
+      }
+    }
     if (!boleto) continue;
     usados.add(boleto.id);
     ganadores.push({
       premioNum: ganadores.length + 1,
       premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
-      numeroGanador: resultado.last4,
+      numeroGanador,
       numeroOficial: resultado.oficial,
       boletoId: boleto.id,
       nombre: boleto.nombre || "Sin nombre",
