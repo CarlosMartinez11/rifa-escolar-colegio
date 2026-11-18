@@ -15,7 +15,9 @@ const estadoInicial = {
   boletos: [],
   resultadosLoteria: [],
   nombreSorteo: "",
-  ganadores: []
+  ganadores: [],
+  ajustesAsignacion: [],
+  diagnosticoGanadores: []
 };
 
 let state = structuredClone(estadoInicial);
@@ -71,6 +73,7 @@ function normalizarEstado(data) {
   merge.resultadosLoteria = Array.isArray(merge.resultadosLoteria) ? merge.resultadosLoteria : [];
   merge.ganadores = Array.isArray(merge.ganadores) ? merge.ganadores : [];
   merge.diagnosticoGanadores = Array.isArray(merge.diagnosticoGanadores) ? merge.diagnosticoGanadores : [];
+  merge.ajustesAsignacion = Array.isArray(merge.ajustesAsignacion) ? merge.ajustesAsignacion : [];
   merge.nombreColegio = String(merge.nombreColegio || "Liceo Carl Ransom Rogers");
   merge.logo = typeof merge.logo === "string" ? merge.logo : "";
   recalcularRangoResultados(merge);
@@ -493,6 +496,7 @@ function calcularGanadoresAutomatico() {
   const resultadosUsados = new Set();
   const ganadores = [];
   const faltantes = [];
+  const ajustes = [];
   for (let i = 0; i < state.resultadosLoteria.length; i++) {
     if (ganadores.length >= state.config.numPremios) break;
     if (resultadosUsados.has(i)) continue;
@@ -542,6 +546,20 @@ function calcularGanadoresAutomatico() {
     resultadosUsados.add(i);
     resultadosUsados.add(indiceResultadoUsado);
     usados.add(boleto.id);
+    const tipoAjuste = indiceResultadoUsado !== i
+      ? "Siguiente número oficial disponible"
+      : numeroGanador === resultado.last4
+        ? "Coincidencia directa"
+        : "Alternativa por últimas tres cifras";
+    ajustes.push({
+      premioNum: ganadores.length + 1,
+      premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
+      oficialOriginal: resultado.oficial,
+      oficialUsado: numeroOficialGanador,
+      numeroGanador,
+      boletoId: boleto.id,
+      tipo: tipoAjuste
+    });
     ganadores.push({
       premioNum: ganadores.length + 1,
       premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
@@ -575,6 +593,15 @@ function calcularGanadoresAutomatico() {
 
     resultadosUsados.add(i);
     usados.add(boleto.id);
+    ajustes.push({
+      premioNum: ganadores.length + 1,
+      premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
+      oficialOriginal: resultado.oficial,
+      oficialUsado: resultado.oficial,
+      numeroGanador,
+      boletoId: boleto.id,
+      tipo: numeroGanador === resultado.last4 ? "Coincidencia directa" : "Alternativa por últimas tres cifras"
+    });
     ganadores.push({
       premioNum: ganadores.length + 1,
       premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
@@ -607,6 +634,15 @@ function calcularGanadoresAutomatico() {
       siguienteResultado++;
       const numeroGanador = [boleto.numeroA, boleto.numeroB]
         .find(numero => numero >= state.config.min && numero <= state.config.max) ?? boleto.numeroA;
+      ajustes.push({
+        premioNum: ganadores.length + 1,
+        premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
+        oficialOriginal: resultado ? resultado.oficial : 0,
+        oficialUsado: resultado ? resultado.oficial : 0,
+        numeroGanador,
+        boletoId: boleto.id,
+        tipo: "Boleto disponible aplicado para completar el total"
+      });
       ganadores.push({
         premioNum: ganadores.length + 1,
         premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
@@ -622,6 +658,7 @@ function calcularGanadoresAutomatico() {
   }
   state.ganadores = ganadores;
   state.diagnosticoGanadores = faltantes;
+  state.ajustesAsignacion = ajustes;
   guardarEstado();
   renderResultadoCalculo();
   renderListaGanadores();
@@ -644,7 +681,27 @@ function renderResultadoCalculo() {
       <div class="calculation-row__number">${g.premioNum}</div>
       <div><strong>${escapeHtml(g.premioNombre)}</strong><div class="muted">Número ${formatearNumero(g.numeroGanador)} · Boleto #${escapeHtml(g.boletoId)} · ${escapeHtml(g.nombre)}</div></div>
     </div>
-  `).join("") + renderDiagnosticoFaltantes();
+  `).join("") + renderRegistroAjustes() + renderDiagnosticoFaltantes();
+}
+
+function renderRegistroAjustes() {
+  if (!Array.isArray(state.ajustesAsignacion) || !state.ajustesAsignacion.length) return "";
+  return `
+    <div class="notice" style="margin-top:16px;background:#f8fafc;color:#334155">
+      <strong>Proceso de asignación</strong>
+      <div style="margin-top:10px;display:grid;gap:8px">
+        ${state.ajustesAsignacion.map(a => `
+          <div style="border-bottom:1px solid #e2e8f0;padding-bottom:8px">
+            <strong>Premio ${a.premioNum}: ${escapeHtml(a.premioNombre)}</strong>
+            <div>Tipo: ${escapeHtml(a.tipo)}</div>
+            <div>Número oficial original: ${escapeHtml(a.oficialOriginal || "—")}</div>
+            <div>Número oficial usado: ${escapeHtml(a.oficialUsado || "—")}</div>
+            <div>Número asignado: ${formatearNumero(a.numeroGanador)} · Boleto: #${escapeHtml(a.boletoId)}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderDiagnosticoFaltantes() {
@@ -666,6 +723,8 @@ function borrarGanadores() {
   if (!state.ganadores.length) return mostrarToast("No hay ganadores para borrar.");
   if (!confirm("¿Borrar únicamente la lista calculada de ganadores?")) return;
   state.ganadores = [];
+  state.ajustesAsignacion = [];
+  state.diagnosticoGanadores = [];
   guardarEstado();
   renderResultadoCalculo();
   renderListaGanadores();
