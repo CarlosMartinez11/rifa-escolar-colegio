@@ -89,24 +89,6 @@ function generarCandidatosPorRango(last4, last3, config) {
   return candidatos;
 }
 
-function buscarBoletoMasCercano(vendidos, usados, candidatos) {
-  let mejorBoleto = null;
-  let mejorDistancia = Infinity;
-  for (const boleto of vendidos) {
-    if (usados.has(boleto.id)) continue;
-    for (const candidato of candidatos) {
-      for (const numeroBoleto of [boleto.numeroA, boleto.numeroB]) {
-        const distancia = Math.abs(numeroBoleto - candidato);
-        if (distancia < mejorDistancia) {
-          mejorDistancia = distancia;
-          mejorBoleto = boleto;
-        }
-      }
-    }
-  }
-  return mejorBoleto;
-}
-
 function recalcularRangoResultados(target = state) {
   target.resultadosLoteria = target.resultadosLoteria.map((r, i) => {
     const oficialTexto = String(r.oficial ?? r.last4 ?? "").replace(/\D/g, "");
@@ -500,24 +482,6 @@ function calcularGanadores() {
       if (boleto) {
         numeroGanador = candidato;
         break;
-      }
-    }
-    if (!boleto) {
-      boleto = buscarBoletoMasCercano(vendidos, usados, candidatos);
-      if (boleto) {
-        const numerosBoleto = [boleto.numeroA, boleto.numeroB]
-          .filter(numero => numero >= state.config.min && numero <= state.config.max);
-        let distanciaGanador = Infinity;
-        numeroGanador = null;
-        candidatos.forEach(candidato => {
-          numerosBoleto.forEach(numero => {
-            const distancia = Math.abs(numero - candidato);
-            if (distancia < distanciaGanador) {
-              distanciaGanador = distancia;
-              numeroGanador = numero;
-            }
-          });
-        });
       }
     }
     if (!boleto) continue;
