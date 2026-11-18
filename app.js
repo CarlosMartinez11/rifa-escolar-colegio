@@ -517,17 +517,27 @@ function consultarBoleto() {
   }
   const ganador = state.ganadores.find(g => g.boletoId === boleto.id);
   if (ganador) {
+    const medalInfo = {
+      1: { clase: "diamond", icono: "💎", etiqueta: "Primer premio" },
+      2: { clase: "gold", icono: "🥇", etiqueta: "Segundo premio" },
+      3: { clase: "silver", icono: "🥈", etiqueta: "Tercer premio" },
+      4: { clase: "bronze", icono: "🥉", etiqueta: "Cuarto premio" }
+    };
+    const premioEspecial = medalInfo[ganador.premioNum];
+    const claseEspecial = premioEspecial ? ` celebration-${premioEspecial.clase}` : "";
+    const iconoEspecial = premioEspecial ? premioEspecial.icono : "🏆";
+    const etiquetaEspecial = premioEspecial ? premioEspecial.etiqueta : "Resultado ganador";
     contenedor.innerHTML = `
-      <div class="winner-celebration" role="status" aria-live="assertive">
+      <div class="winner-celebration${claseEspecial}" role="status" aria-live="assertive">
         <div class="celebration-confetti" aria-hidden="true">
           <span></span><span></span><span></span><span></span><span></span><span></span>
           <span></span><span></span><span></span><span></span><span></span><span></span>
         </div>
         <div class="celebration-badge" aria-hidden="true">
           <div class="celebration-rays"></div>
-          <div class="celebration-trophy">🏆</div>
+          <div class="celebration-trophy">${iconoEspecial}</div>
         </div>
-        <p class="celebration-kicker">Resultado ganador</p>
+        <p class="celebration-kicker">${etiquetaEspecial}</p>
         <h2>¡Felicidades, ganaste!</h2>
         <div class="celebration-prize">${escapeHtml(ganador.premioNombre)}</div>
         <div class="celebration-ticket">
