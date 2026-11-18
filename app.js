@@ -1,7 +1,7 @@
 "use strict";
 
 const STORAGE_KEY = "rifa_escolar_v2";
-const DEFAULT_PASSWORD = "rifa2026";
+const DEFAULT_PASSWORD = "RifaLCRR1972";
 
 const estadoInicial = {
   password: DEFAULT_PASSWORD,
@@ -44,6 +44,9 @@ function mostrarToast(mensaje) {
 
 function normalizarEstado(data) {
   const merge = { ...structuredClone(estadoInicial), ...(data || {}) };
+  if (merge.password === "rifa2026") {
+    merge.password = DEFAULT_PASSWORD;
+  }
   merge.config = { ...estadoInicial.config, ...(merge.config || {}) };
   merge.config.min = Number.isInteger(Number(merge.config.min)) ? Number(merge.config.min) : 1;
   merge.config.max = Number.isInteger(Number(merge.config.max)) ? Number(merge.config.max) : 2840;
@@ -196,11 +199,11 @@ function cerrarSesionAdmin() {
 }
 
 function restablecerPassword() {
-  if (!confirm("¿Restablecer la contraseña de administración a rifa2026?")) return;
+  if (!confirm("¿Restablecer la contraseña de administración a RifaLCRR1972?")) return;
   state.password = DEFAULT_PASSWORD;
   guardarEstado();
   document.getElementById("admin-password").value = "";
-  mostrarToast("Contraseña restablecida a rifa2026.");
+  mostrarToast("Contraseña restablecida a RifaLCRR1972.");
 }
 
 function renderTablaBoletos() {

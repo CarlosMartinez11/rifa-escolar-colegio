@@ -10,7 +10,7 @@ Abre `index.html` directamente en un navegador moderno. No requiere instalación
 
 ## Contraseña inicial
 
-La primera contraseña de administración es `rifa2026`. Puede cambiarse desde **Administración > Configuración**.
+La primera contraseña de administración es `RifaLCRR1972`. Puede cambiarse desde **Administración > Configuración**.
 
 Esta protección evita cambios accidentales, pero no constituye seguridad criptográfica ni protección de datos personales.
 
