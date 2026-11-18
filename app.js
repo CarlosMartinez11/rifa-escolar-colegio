@@ -474,20 +474,45 @@ function calcularGanadores() {
   }
   if (!confirm("¿Calcular y reemplazar la lista actual de ganadores?")) return;
   const usados = new Set();
+  const resultadosUsados = new Set();
   const ganadores = [];
   const faltantes = [];
-  for (const resultado of state.resultadosLoteria) {
+  for (let i = 0; i < state.resultadosLoteria.length; i++) {
     if (ganadores.length >= state.config.numPremios) break;
+    if (resultadosUsados.has(i)) continue;
+    const resultado = state.resultadosLoteria[i];
     const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
       ? resultado.candidatos
       : generarCandidatosPorRango(resultado.last4, resultado.last3, state.config);
     let numeroGanador = null;
     let boleto = null;
+    let numeroOficialGanador = resultado.oficial;
+    let indiceResultadoUsado = i;
     for (const candidato of candidatos) {
       boleto = vendidos.find(b => !usados.has(b.id) && (b.numeroA === candidato || b.numeroB === candidato));
       if (boleto) {
         numeroGanador = candidato;
         break;
+      }
+    }
+    if (!boleto) {
+      for (let j = i + 1; j < state.resultadosLoteria.length; j++) {
+        if (resultadosUsados.has(j)) continue;
+        const resultadoSiguiente = state.resultadosLoteria[j];
+        const candidatosSiguientes = Array.isArray(resultadoSiguiente.candidatos) && resultadoSiguiente.candidatos.length
+          ? resultadoSiguiente.candidatos
+          : generarCandidatosPorRango(resultadoSiguiente.last4, resultadoSiguiente.last3, state.config);
+        for (const candidato of candidatosSiguientes) {
+          boleto = vendidos.find(b => !usados.has(b.id) && (b.numeroA === candidato || b.numeroB === candidato));
+          if (boleto) {
+            numeroGanador = candidato;
+            numeroOficialGanador = resultadoSiguiente.oficial;
+            indiceResultadoUsado = j;
+            resultadosUsados.add(j);
+            break;
+          }
+        }
+        if (boleto) break;
       }
     }
     if (!boleto) {
@@ -498,12 +523,14 @@ function calcularGanadores() {
       });
       continue;
     }
+    resultadosUsados.add(i);
+    resultadosUsados.add(indiceResultadoUsado);
     usados.add(boleto.id);
     ganadores.push({
       premioNum: ganadores.length + 1,
       premioNombre: state.config.premios[ganadores.length] || `Premio ${ganadores.length + 1}`,
       numeroGanador,
-      numeroOficial: resultado.oficial,
+      numeroOficial: numeroOficialGanador,
       boletoId: boleto.id,
       nombre: boleto.nombre || "Sin nombre",
       telefono: boleto.telefono || "",
