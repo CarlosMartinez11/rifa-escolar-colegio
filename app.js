@@ -69,20 +69,27 @@ function normalizarEstado(data) {
   return merge;
 }
 
+function generarCandidatosPorRango(last4, last3, config) {
+  if (last4 >= config.min && last4 <= config.max) {
+    return [last4];
+  }
+
+  const candidatos = [];
+  for (let numero = last3; numero <= config.max; numero += 1000) {
+    if (numero >= config.min && numero <= config.max) {
+      candidatos.push(numero);
+    }
+  }
+  return candidatos;
+}
+
 function recalcularRangoResultados(target = state) {
   target.resultadosLoteria = target.resultadosLoteria.map((r, i) => {
     const oficialTexto = String(r.oficial ?? r.last4 ?? "").replace(/\D/g, "");
     const oficial = oficialTexto ? Number(oficialTexto) : 0;
     const last4 = oficial % 10000;
     const last3 = oficial % 1000;
-    const coincidencias = [
-      last4,
-      ...(last4 >= target.config.min && last4 <= target.config.max ? [] : [last3])
-    ].filter((numero, index, lista) =>
-      numero >= target.config.min &&
-      numero <= target.config.max &&
-      lista.indexOf(numero) === index
-    );
+    const coincidencias = generarCandidatosPorRango(last4, last3, target.config);
     return {
       orden: i + 1,
       oficial,
@@ -371,14 +378,7 @@ function guardarResultados() {
     const oficial = Number(valor);
     const last4 = oficial % 10000;
     const last3 = oficial % 1000;
-    const coincidencias = [
-      last4,
-      ...(last4 >= state.config.min && last4 <= state.config.max ? [] : [last3])
-    ].filter((numero, index, lista) =>
-      numero >= state.config.min &&
-      numero <= state.config.max &&
-      lista.indexOf(numero) === index
-    );
+    const coincidencias = generarCandidatosPorRango(last4, last3, state.config);
     return {
       orden: i + 1,
       oficial,
@@ -412,11 +412,7 @@ function calcularGanadores() {
     if (!resultado.enRango) continue;
     const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
       ? resultado.candidatos
-      : [resultado.last4, resultado.last3].filter((numero, index, lista) =>
-          numero >= state.config.min &&
-          numero <= state.config.max &&
-          lista.indexOf(numero) === index
-        );
+      : generarCandidatosPorRango(resultado.last4, resultado.last3, state.config);
     let numeroGanador = null;
     let boleto = null;
     for (const candidato of candidatos) {
