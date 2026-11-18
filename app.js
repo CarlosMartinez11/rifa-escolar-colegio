@@ -166,7 +166,13 @@ async function cargarEstadoRemoto() {
       throw new Error(`Supabase respondió ${respuesta.status}`);
     }
     const filas = await respuesta.json();
-    if (Array.isArray(filas) && filas.length && filas[0].state) {
+    if (
+      Array.isArray(filas) &&
+      filas.length &&
+      filas[0].state &&
+      typeof filas[0].state === "object" &&
+      Object.keys(filas[0].state).length > 0
+    ) {
       state = normalizarEstado(filas[0].state);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       return true;
