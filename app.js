@@ -239,13 +239,7 @@ function renderIdentidad() {
 
 function renderEstadoSorteo() {
   const estado = document.getElementById("estado-sorteo");
-  if (state.ganadores.length) {
-    estado.textContent = `${state.ganadores.length} premios asignados`;
-  } else if (state.resultadosLoteria.length) {
-    estado.textContent = "Resultados cargados";
-  } else {
-    estado.textContent = "Sorteo pendiente";
-  }
+  estado.classList.add("hidden");
 }
 
 document.getElementById("form-login").addEventListener("submit", event => {
