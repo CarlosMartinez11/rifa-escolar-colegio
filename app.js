@@ -2,6 +2,10 @@
 
 const STORAGE_KEY = "rifa_escolar_v2";
 const DEFAULT_PASSWORD = "RifaLCRR1972";
+const SUPABASE_URL = "https://nqsaxfqwuiqvcomiltjq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_BtXcvyOe2Q2e96MAhCaK8A_OmJxPvKi";
+const SUPABASE_TABLE = "rifa_estado";
+const SUPABASE_ROW_ID = "rifa-principal";
 
 const estadoInicial = {
   password: DEFAULT_PASSWORD,
@@ -120,6 +124,57 @@ function guardarEstado() {
   } catch (error) {
     mostrarToast("No fue posible guardar los datos en este navegador.");
   }
+  publicarEstadoRemoto();
+}
+
+async function publicarEstadoRemoto() {
+  try {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({
+        id: SUPABASE_ROW_ID,
+        state,
+        updated_at: new Date().toISOString()
+      })
+    });
+    if (!respuesta.ok) {
+      throw new Error(`Supabase respondió ${respuesta.status}`);
+    }
+  } catch (error) {
+    console.warn("No se pudo publicar el estado compartido.", error);
+  }
+}
+
+async function cargarEstadoRemoto() {
+  try {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_ROW_ID)}&select=state`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+    if (!respuesta.ok) {
+      throw new Error(`Supabase respondió ${respuesta.status}`);
+    }
+    const filas = await respuesta.json();
+    if (Array.isArray(filas) && filas.length && filas[0].state) {
+      state = normalizarEstado(filas[0].state);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar el estado compartido.", error);
+  }
+  return false;
 }
 
 function mostrarSeccion(name) {
@@ -694,8 +749,12 @@ function descargarArchivo(content, filename, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function init() {
+async function init() {
   cargarEstado();
+  const tieneEstadoRemoto = await cargarEstadoRemoto();
+  if (!tieneEstadoRemoto) {
+    publicarEstadoRemoto();
+  }
   renderIdentidad();
   renderEstadoSorteo();
   renderTablaBoletos();
@@ -707,6 +766,19 @@ function init() {
   inputFolio.addEventListener("input", () => {
     inputFolio.value = inputFolio.value.replace(/\D/g, "").slice(0, 4);
   });
+
+  setInterval(async () => {
+    const autenticado = sessionStorage.getItem("rifa_admin_ok") === "1";
+    if (autenticado) return;
+    const cargado = await cargarEstadoRemoto();
+    if (cargado) {
+      renderIdentidad();
+      renderEstadoSorteo();
+      renderTablaBoletos();
+      renderListaGanadores();
+      renderResultadoCalculo();
+    }
+  }, 10000);
 }
 
 init();
