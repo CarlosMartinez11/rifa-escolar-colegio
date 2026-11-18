@@ -128,6 +128,16 @@ function guardarEstado() {
 }
 
 async function publicarEstadoRemoto() {
+  if (
+    state.config &&
+    state.config.numPremios === 30 &&
+    Array.isArray(state.ganadores) &&
+    state.ganadores.length > 0 &&
+    state.ganadores.length < 30
+  ) {
+    console.warn("Se bloqueó una publicación incompleta: se requieren 30 premios.");
+    return;
+  }
   try {
     const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
       method: "POST",
@@ -461,7 +471,6 @@ function guardarResultados() {
   preview.innerHTML = `Se guardaron ${state.resultadosLoteria.length} números. ${enRango} tienen últimas cuatro cifras dentro del rango configurado.`;
   preview.classList.remove("hidden");
   renderEstadoSorteo();
-  calcularGanadoresAutomatico();
   mostrarToast("Resultados guardados.");
 }
 
