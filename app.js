@@ -501,8 +501,14 @@ function consultarBoleto() {
   const input = document.getElementById("input-folio");
   const contenedor = document.getElementById("resultado-consulta");
   const valor = input.value.trim();
+  if (!/^\d{4}$/.test(valor)) {
+    contenedor.innerHTML = `<div class="result-card result-card--warning"><div class="result-card__icon">⚠️</div><h2>Escribe las cuatro cifras</h2><p>El número debe contener exactamente cuatro dígitos, por ejemplo: 0280 o 1381.</p></div>`;
+    input.focus();
+    input.select();
+    return;
+  }
   if (!numeroValido(valor)) {
-    contenedor.innerHTML = `<div class="result-card result-card--warning"><div class="result-card__icon">⚠️</div><h2>Escribe un número válido</h2><p>Debe tener hasta cuatro cifras y estar dentro del rango configurado.</p></div>`;
+    contenedor.innerHTML = `<div class="result-card result-card--warning"><div class="result-card__icon">⚠️</div><h2>Escribe un número válido</h2><p>Debe tener exactamente cuatro cifras y estar dentro del rango configurado.</p></div>`;
     return;
   }
   const numero = Number(valor);
@@ -696,6 +702,11 @@ function init() {
   renderListaGanadores();
   renderResultadoCalculo();
   mostrarSeccion("consulta");
+
+  const inputFolio = document.getElementById("input-folio");
+  inputFolio.addEventListener("input", () => {
+    inputFolio.value = inputFolio.value.replace(/\D/g, "").slice(0, 4);
+  });
 }
 
 init();

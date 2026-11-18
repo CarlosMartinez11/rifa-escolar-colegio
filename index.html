@@ -39,7 +39,7 @@
         <form id="form-consulta" class="search-form" novalidate>
           <label for="input-folio">Número del boleto</label>
           <div class="search-form__row">
-            <input id="input-folio" name="folio" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Ej. 1381" aria-describedby="ayuda-folio">
+            <input id="input-folio" name="folio" type="text" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="off" placeholder="Ej. 1381" aria-describedby="ayuda-folio">
             <button class="button button--primary" type="submit">Consultar</button>
           </div>
           <small id="ayuda-folio">Escribe las cuatro cifras de tu boleto.</small>
