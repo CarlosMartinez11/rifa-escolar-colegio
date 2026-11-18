@@ -477,6 +477,26 @@ document.getElementById("form-consulta").addEventListener("submit", event => {
   consultarBoleto();
 });
 
+function lanzarConfeti() {
+  const contenedor = document.getElementById("resultado-consulta");
+  const colores = ["#2563eb", "#f6c445", "#16a34a", "#ec4899", "#f97316", "#7c3aed"];
+
+  contenedor.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
+  for (let i = 0; i < 34; i++) {
+    const pieza = document.createElement("span");
+    pieza.className = "confetti-piece";
+    pieza.style.setProperty("--confetti-x", `${(Math.random() - 0.5) * 320}px`);
+    pieza.style.setProperty("--confetti-delay", `${Math.random() * 0.35}s`);
+    pieza.style.setProperty("--confetti-duration", `${1.8 + Math.random() * 1.3}s`);
+    pieza.style.setProperty("--confetti-color", colores[i % colores.length]);
+    pieza.style.left = `${50 + (Math.random() - 0.5) * 48}%`;
+    contenedor.appendChild(pieza);
+  }
+  setTimeout(() => {
+    contenedor.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
+  }, 3500);
+}
+
 function consultarBoleto() {
   const input = document.getElementById("input-folio");
   const contenedor = document.getElementById("resultado-consulta");
@@ -498,10 +518,24 @@ function consultarBoleto() {
   const ganador = state.ganadores.find(g => g.boletoId === boleto.id);
   if (ganador) {
     contenedor.innerHTML = `
-      <div class="result-card result-card--winner"><div class="result-card__icon">🏆</div><h2>¡Felicidades, ganaste!</h2>
-        <p><strong>${escapeHtml(ganador.premioNombre)}</strong></p>
-        <div class="details"><span>Boleto ganador: <strong>#${escapeHtml(boleto.id)}</strong></span></div>
+      <div class="winner-celebration" role="status" aria-live="assertive">
+        <div class="celebration-confetti" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="celebration-badge" aria-hidden="true">
+          <div class="celebration-rays"></div>
+          <div class="celebration-trophy">🏆</div>
+        </div>
+        <p class="celebration-kicker">Resultado ganador</p>
+        <h2>¡Felicidades, ganaste!</h2>
+        <div class="celebration-prize">${escapeHtml(ganador.premioNombre)}</div>
+        <div class="celebration-ticket">
+          <span>Boleto ganador</span>
+          <strong>#${escapeHtml(boleto.id)}</strong>
+        </div>
       </div>`;
+    lanzarConfeti();
     return;
   }
   if (!state.ganadores.length) {
