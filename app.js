@@ -70,6 +70,7 @@ function normalizarEstado(data) {
   })) : [];
   merge.resultadosLoteria = Array.isArray(merge.resultadosLoteria) ? merge.resultadosLoteria : [];
   merge.ganadores = Array.isArray(merge.ganadores) ? merge.ganadores : [];
+  merge.diagnosticoGanadores = Array.isArray(merge.diagnosticoGanadores) ? merge.diagnosticoGanadores : [];
   merge.nombreColegio = String(merge.nombreColegio || "Liceo Carl Ransom Rogers");
   merge.logo = typeof merge.logo === "string" ? merge.logo : "";
   recalcularRangoResultados(merge);
@@ -183,7 +184,7 @@ async function cargarEstadoRemoto() {
 }
 
 function mostrarSeccion(name) {
-  ["consulta", "resultados", "admin"].forEach(nombre => {
+  ["consulta", "admin"].forEach(nombre => {
     document.getElementById(`section-${nombre}`).classList.add("hidden");
     document.getElementById(`nav-${nombre}`).classList.remove("active");
   });
@@ -467,9 +468,14 @@ function calcularGanadores() {
   if (!state.resultadosLoteria.length) return mostrarToast("Primero carga los resultados oficiales.");
   const vendidos = state.boletos.filter(b => b.vendido);
   if (!vendidos.length) return mostrarToast("No hay boletos vendidos.");
+  const idsUnicos = new Set(vendidos.map(b => b.id));
+  if (idsUnicos.size !== vendidos.length) {
+    return mostrarToast("Hay folios vendidos duplicados. Corrige los IDs antes de calcular.");
+  }
   if (!confirm("¿Calcular y reemplazar la lista actual de ganadores?")) return;
   const usados = new Set();
   const ganadores = [];
+  const faltantes = [];
   for (const resultado of state.resultadosLoteria) {
     if (ganadores.length >= state.config.numPremios) break;
     const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
@@ -484,7 +490,14 @@ function calcularGanadores() {
         break;
       }
     }
-    if (!boleto) continue;
+    if (!boleto) {
+      faltantes.push({
+        oficial: resultado.oficial,
+        last4: resultado.last4,
+        candidatos
+      });
+      continue;
+    }
     usados.add(boleto.id);
     ganadores.push({
       premioNum: ganadores.length + 1,
@@ -499,6 +512,7 @@ function calcularGanadores() {
     });
   }
   state.ganadores = ganadores;
+  state.diagnosticoGanadores = faltantes;
   guardarEstado();
   renderResultadoCalculo();
   renderListaGanadores();
@@ -509,7 +523,7 @@ function calcularGanadores() {
 function renderResultadoCalculo() {
   const contenedor = document.getElementById("resultado-calculo");
   if (!state.ganadores.length) {
-    contenedor.innerHTML = `<p class="muted">Aún no hay ganadores calculados.</p>`;
+    contenedor.innerHTML = `<p class="muted">Aún no hay ganadores calculados.</p>${renderDiagnosticoFaltantes()}`;
     return;
   }
   contenedor.innerHTML = state.ganadores.map(g => `
@@ -517,7 +531,21 @@ function renderResultadoCalculo() {
       <div class="calculation-row__number">${g.premioNum}</div>
       <div><strong>${escapeHtml(g.premioNombre)}</strong><div class="muted">Número ${formatearNumero(g.numeroGanador)} · Boleto #${escapeHtml(g.boletoId)} · ${escapeHtml(g.nombre)}</div></div>
     </div>
-  `).join("");
+  `).join("") + renderDiagnosticoFaltantes();
+}
+
+function renderDiagnosticoFaltantes() {
+  if (!Array.isArray(state.diagnosticoGanadores) || !state.diagnosticoGanadores.length) return "";
+  return `
+    <div class="notice" style="margin-top:16px;background:#fff7ed;color:#9a4d18">
+      <strong>Faltan ${30 - state.ganadores.length} premio(s).</strong>
+      <div style="margin-top:8px">
+        ${state.diagnosticoGanadores.map(faltante => `
+          <div>Número oficial ${escapeHtml(faltante.oficial)} → probó ${faltante.candidatos.map(formatearNumero).join(", ")}</div>
+        `).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function borrarGanadores() {

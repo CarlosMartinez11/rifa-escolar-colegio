@@ -23,7 +23,6 @@
       </a>
       <nav class="nav" aria-label="Navegación principal">
         <button id="nav-consulta" class="nav__button active" type="button" onclick="mostrarSeccion('consulta')">Consultar boleto</button>
-        <button id="nav-resultados" class="nav__button" type="button" onclick="mostrarSeccion('resultados')">Ganadores</button>
         <button id="nav-admin" class="nav__button nav__button--admin" type="button" onclick="mostrarSeccion('admin')">Administración</button>
       </nav>
     </div>
@@ -47,16 +46,14 @@
       </div>
       <div class="card mechanic">
         <h2>¿Cómo se determinan los ganadores?</h2>
-        <ol><li>Se utilizan los números oficiales publicados por Lotería Nacional.</li><li>Se toman las últimas cuatro cifras de cada número premiado.</li><li>Solo participan los boletos marcados como vendidos y pagados.</li><li>Cada boleto puede ganar una sola vez, aunque tenga dos números.</li></ol>
-        <li>Si las cuatro cifras quedan fuera del rango, se prueban las últimas tres cifras avanzando en bloques de mil: 0280, 1280, 2280, según estén disponibles.</li>
-<li>Solo participan los boletos marcados como vendidos y pagados.</li><li>Cada boleto puede ganar una sola vez, aunque tenga dos números.</li></ol>
+        <ol>
+          <li>Se utilizan los números oficiales publicados por Lotería Nacional.</li>
+          <li>Se toman las últimas cuatro cifras de cada número premiado.</li>
+          <li>Si quedan fuera del rango, se prueban las últimas tres cifras en bloques de mil.</li>
+          <li>Solo participan los boletos vendidos y pagados.</li>
+          <li>Cada boleto puede ganar una sola vez.</li>
+        </ol>
       </div>
-    </section>
-    <section id="section-resultados" class="section hidden">
-      <div class="section-heading">
-        <div><p class="eyebrow">Resultados oficiales</p><h1>Lista de ganadores</h1><p id="info-sorteo">Aún no se han cargado resultados.</p></div>
-      </div>
-      <div id="lista-ganadores" class="winner-list"></div>
     </section>
     <section id="section-admin" class="section hidden">
       <div id="admin-login" class="login-card card">
