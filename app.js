@@ -525,7 +525,7 @@ function consultarBoleto() {
     };
     const premioEspecial = medalInfo[ganador.premioNum];
     const claseEspecial = premioEspecial ? ` celebration-${premioEspecial.clase}` : "";
-    const iconoEspecial = premioEspecial ? premioEspecial.icono : "🏆";
+    const iconoEspecial = premioEspecial ? premioEspecial.icono : "🎉";
     const etiquetaEspecial = premioEspecial ? premioEspecial.etiqueta : "Resultado ganador";
     contenedor.innerHTML = `
       <div class="winner-celebration${claseEspecial}" role="status" aria-live="assertive">
