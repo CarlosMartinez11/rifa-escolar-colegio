@@ -525,26 +525,18 @@ function consultarBoleto() {
 function renderListaGanadores() {
   const contenedor = document.getElementById("lista-ganadores");
   const info = document.getElementById("info-sorteo");
-  const boton = document.getElementById("boton-imprimir");
   if (!state.ganadores.length) {
     contenedor.innerHTML = `<p class="muted" style="text-align:center;padding:40px 0">Los resultados se publicarán después del sorteo oficial.</p>`;
     info.textContent = state.nombreSorteo ? `Sorteo: ${state.nombreSorteo}` : "Aún no se han cargado resultados.";
-    boton.classList.add("hidden");
     return;
   }
   info.textContent = state.nombreSorteo || "Resultados publicados";
-  boton.classList.remove("hidden");
   contenedor.innerHTML = state.ganadores.map(g => `
     <article class="winner-row">
       <div class="winner-row__number">${g.premioNum}</div>
       <div><h3>${escapeHtml(g.premioNombre)}</h3><p>Boleto ganador: #${escapeHtml(g.boletoId)}</p></div>
     </article>
   `).join("");
-}
-
-function imprimirGanadores() {
-  if (!state.ganadores.length) return mostrarToast("No hay una lista de ganadores para imprimir.");
-  window.print();
 }
 
 function cargarCamposConfiguracion() {
