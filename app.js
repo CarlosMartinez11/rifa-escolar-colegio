@@ -77,17 +77,34 @@ function normalizarEstado(data) {
 }
 
 function generarCandidatosPorRango(last4, last3, config) {
-  if (last4 >= config.min && last4 <= config.max) {
-    return [last4];
-  }
-
   const candidatos = [];
+  if (last4 >= config.min && last4 <= config.max) {
+    candidatos.push(last4);
+  }
   for (let numero = last3; numero <= config.max; numero += 1000) {
     if (numero >= config.min && numero <= config.max) {
-      candidatos.push(numero);
+      if (!candidatos.includes(numero)) candidatos.push(numero);
     }
   }
   return candidatos;
+}
+
+function buscarBoletoMasCercano(vendidos, usados, candidatos) {
+  let mejorBoleto = null;
+  let mejorDistancia = Infinity;
+  for (const boleto of vendidos) {
+    if (usados.has(boleto.id)) continue;
+    for (const candidato of candidatos) {
+      for (const numeroBoleto of [boleto.numeroA, boleto.numeroB]) {
+        const distancia = Math.abs(numeroBoleto - candidato);
+        if (distancia < mejorDistancia) {
+          mejorDistancia = distancia;
+          mejorBoleto = boleto;
+        }
+      }
+    }
+  }
+  return mejorBoleto;
 }
 
 function recalcularRangoResultados(target = state) {
@@ -473,7 +490,6 @@ function calcularGanadores() {
   const ganadores = [];
   for (const resultado of state.resultadosLoteria) {
     if (ganadores.length >= state.config.numPremios) break;
-    if (!resultado.enRango) continue;
     const candidatos = Array.isArray(resultado.candidatos) && resultado.candidatos.length
       ? resultado.candidatos
       : generarCandidatosPorRango(resultado.last4, resultado.last3, state.config);
@@ -484,6 +500,24 @@ function calcularGanadores() {
       if (boleto) {
         numeroGanador = candidato;
         break;
+      }
+    }
+    if (!boleto) {
+      boleto = buscarBoletoMasCercano(vendidos, usados, candidatos);
+      if (boleto) {
+        const numerosBoleto = [boleto.numeroA, boleto.numeroB]
+          .filter(numero => numero >= state.config.min && numero <= state.config.max);
+        let distanciaGanador = Infinity;
+        numeroGanador = null;
+        candidatos.forEach(candidato => {
+          numerosBoleto.forEach(numero => {
+            const distancia = Math.abs(numero - candidato);
+            if (distancia < distanciaGanador) {
+              distanciaGanador = distancia;
+              numeroGanador = numero;
+            }
+          });
+        });
       }
     }
     if (!boleto) continue;
