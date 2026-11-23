@@ -40,28 +40,6 @@ function numeroValido(value) {
   return /^\d{1,4}$/.test(String(value).trim()) && Number(value) >= 0 && Number(value) <= 9999;
 }
 
-function enteroAleatorioSeguro(maximo) {
-  if (!Number.isSafeInteger(maximo) || maximo <= 0) return 0;
-  if (window.crypto?.getRandomValues) {
-    const limite = Math.floor(0x100000000 / maximo) * maximo;
-    const buffer = new Uint32Array(1);
-    do {
-      window.crypto.getRandomValues(buffer);
-    } while (buffer[0] >= limite);
-    return buffer[0] % maximo;
-  }
-  return Math.floor(Math.random() * maximo);
-}
-
-function mezclarImparcial(lista) {
-  const mezcla = lista.slice();
-  for (let i = mezcla.length - 1; i > 0; i--) {
-    const j = enteroAleatorioSeguro(i + 1);
-    [mezcla[i], mezcla[j]] = [mezcla[j], mezcla[i]];
-  }
-  return mezcla;
-}
-
 function mostrarToast(mensaje) {
   const toast = document.getElementById("toast");
   toast.textContent = mensaje;
@@ -504,6 +482,7 @@ function guardarResultados() {
   state.ganadores = [];
   recalcularRangoResultados();
   guardarEstado();
+  calcularGanadoresAutomatico();
   const enRango = state.resultadosLoteria.filter(r => r.enRango).length;
   const preview = document.getElementById("preview-resultados");
   preview.innerHTML = `Se guardaron ${state.resultadosLoteria.length} números. ${enRango} tienen últimas cuatro cifras dentro del rango configurado.`;
@@ -657,9 +636,10 @@ function calcularGanadoresAutomatico() {
   }
 
   if (ganadores.length < state.config.numPremios) {
-    const boletosDisponibles = mezclarImparcial(
-      vendidos.filter(b => !usados.has(b.id))
-    );
+    const boletosDisponibles = vendidos
+      .filter(b => !usados.has(b.id))
+      .slice()
+      .sort((a, b) => Number(a.id) - Number(b.id));
     let siguienteResultado = 0;
     for (const boleto of boletosDisponibles) {
       if (ganadores.length >= state.config.numPremios) break;
@@ -681,7 +661,7 @@ function calcularGanadoresAutomatico() {
         oficialUsado: resultado ? resultado.oficial : 0,
         numeroGanador,
         boletoId: boleto.id,
-        tipo: "Selección aleatoria criptográfica para completar el total"
+        tipo: "Siguiente boleto vendido disponible"
       });
       ganadores.push({
         premioNum: ganadores.length + 1,
@@ -942,6 +922,7 @@ function guardarConfiguracion() {
   recalcularRangoResultados();
   state.ganadores = [];
   guardarEstado();
+  calcularGanadoresAutomatico();
   renderIdentidad();
   renderEstadoSorteo();
   mostrarToast("Configuración guardada.");
