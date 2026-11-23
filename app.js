@@ -40,6 +40,28 @@ function numeroValido(value) {
   return /^\d{1,4}$/.test(String(value).trim()) && Number(value) >= 0 && Number(value) <= 9999;
 }
 
+function enteroAleatorioSeguro(maximo) {
+  if (!Number.isSafeInteger(maximo) || maximo <= 0) return 0;
+  if (window.crypto?.getRandomValues) {
+    const limite = Math.floor(0x100000000 / maximo) * maximo;
+    const buffer = new Uint32Array(1);
+    do {
+      window.crypto.getRandomValues(buffer);
+    } while (buffer[0] >= limite);
+    return buffer[0] % maximo;
+  }
+  return Math.floor(Math.random() * maximo);
+}
+
+function mezclarImparcial(lista) {
+  const mezcla = lista.slice();
+  for (let i = mezcla.length - 1; i > 0; i--) {
+    const j = enteroAleatorioSeguro(i + 1);
+    [mezcla[i], mezcla[j]] = [mezcla[j], mezcla[i]];
+  }
+  return mezcla;
+}
+
 function mostrarToast(mensaje) {
   const toast = document.getElementById("toast");
   toast.textContent = mensaje;
@@ -616,10 +638,9 @@ function calcularGanadoresAutomatico() {
   }
 
   if (ganadores.length < state.config.numPremios) {
-    const boletosDisponibles = vendidos
-      .filter(b => !usados.has(b.id))
-      .slice()
-      .sort((a, b) => Number(a.id) - Number(b.id));
+    const boletosDisponibles = mezclarImparcial(
+      vendidos.filter(b => !usados.has(b.id))
+    );
     let siguienteResultado = 0;
     for (const boleto of boletosDisponibles) {
       if (ganadores.length >= state.config.numPremios) break;
@@ -641,7 +662,7 @@ function calcularGanadoresAutomatico() {
         oficialUsado: resultado ? resultado.oficial : 0,
         numeroGanador,
         boletoId: boleto.id,
-        tipo: "Boleto disponible aplicado para completar el total"
+        tipo: "Selección aleatoria criptográfica para completar el total"
       });
       ganadores.push({
         premioNum: ganadores.length + 1,
@@ -738,23 +759,27 @@ document.getElementById("form-consulta").addEventListener("submit", event => {
 });
 
 function lanzarConfeti() {
-  const contenedor = document.getElementById("resultado-consulta");
+  const esMovil = window.matchMedia("(max-width: 760px)").matches;
   const colores = ["#2563eb", "#f6c445", "#16a34a", "#ec4899", "#f97316", "#7c3aed"];
 
-  contenedor.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
-  for (let i = 0; i < 34; i++) {
+  document.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
+  const cantidad = esMovil ? 110 : 70;
+  for (let i = 0; i < cantidad; i++) {
     const pieza = document.createElement("span");
     pieza.className = "confetti-piece";
-    pieza.style.setProperty("--confetti-x", `${(Math.random() - 0.5) * 320}px`);
+    pieza.style.setProperty("--confetti-x", `${(Math.random() - 0.5) * (esMovil ? 240 : 520)}px`);
     pieza.style.setProperty("--confetti-delay", `${Math.random() * 0.35}s`);
-    pieza.style.setProperty("--confetti-duration", `${1.8 + Math.random() * 1.3}s`);
+    pieza.style.setProperty("--confetti-duration", `${2.2 + Math.random() * (esMovil ? 2.2 : 1.5)}s`);
     pieza.style.setProperty("--confetti-color", colores[i % colores.length]);
-    pieza.style.left = `${50 + (Math.random() - 0.5) * 48}%`;
-    contenedor.appendChild(pieza);
+    pieza.style.left = `${Math.random() * 100}%`;
+    pieza.style.top = `${-15 - Math.random() * 20}%`;
+    pieza.style.setProperty("--confetti-size", `${6 + Math.random() * 7}px`);
+    pieza.style.setProperty("--confetti-spin", `${360 + Math.random() * 720}deg`);
+    document.body.appendChild(pieza);
   }
   setTimeout(() => {
-    contenedor.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
-  }, 3500);
+    document.querySelectorAll(".confetti-piece").forEach(pieza => pieza.remove());
+  }, esMovil ? 5200 : 4000);
 }
 
 function consultarBoleto() {
