@@ -72,6 +72,9 @@ function mostrarToast(mensaje) {
 
 function normalizarEstado(data) {
   const merge = { ...structuredClone(estadoInicial), ...(data || {}) };
+  if (typeof merge.password !== "string" || !merge.password.trim()) {
+    merge.password = DEFAULT_PASSWORD;
+  }
   if (merge.password === "rifa2026") {
     merge.password = DEFAULT_PASSWORD;
   }
@@ -163,6 +166,22 @@ async function publicarEstadoRemoto() {
     console.warn("Se bloqueó una publicación incompleta: se requieren 30 premios.");
     return;
   }
+  const estadoPublico = structuredClone(state);
+  estadoPublico.password = undefined;
+  estadoPublico.boletos = Array.isArray(estadoPublico.boletos)
+    ? estadoPublico.boletos.map(boleto => ({
+        ...boleto,
+        nombre: "",
+        telefono: ""
+      }))
+    : [];
+  estadoPublico.ganadores = Array.isArray(estadoPublico.ganadores)
+    ? estadoPublico.ganadores.map(ganador => ({
+        ...ganador,
+        nombre: "",
+        telefono: ""
+      }))
+    : [];
   try {
     const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
       method: "POST",
@@ -174,7 +193,7 @@ async function publicarEstadoRemoto() {
       },
       body: JSON.stringify({
         id: SUPABASE_ROW_ID,
-        state,
+        state: estadoPublico,
         updated_at: new Date().toISOString()
       })
     });
