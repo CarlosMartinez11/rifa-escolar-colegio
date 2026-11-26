@@ -1,14 +1,15 @@
 "use strict";
 
 const STORAGE_KEY = "rifa_escolar_v2";
-const DEFAULT_PASSWORD = "RifaLCRR1972";
 const SUPABASE_URL = "https://nqsaxfqwuiqvcomiltjq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_BtXcvyOe2Q2e96MAhCaK8A_OmJxPvKi";
 const SUPABASE_TABLE = "rifa_estado";
 const SUPABASE_ROW_ID = "rifa-principal";
+const SESSION_KEY = "rifa_sb_session";
+let estadoRemotoCargado = false;
+let confirmoSobrescritura = false;
 
 const estadoInicial = {
-  password: DEFAULT_PASSWORD,
   nombreColegio: "Liceo Carl Ransom Rogers",
   logo: "",
   config: { min: 1, max: 2840, numPremios: 30, premios: [] },
@@ -50,12 +51,8 @@ function mostrarToast(mensaje) {
 
 function normalizarEstado(data) {
   const merge = { ...structuredClone(estadoInicial), ...(data || {}) };
-  if (typeof merge.password !== "string" || !merge.password.trim()) {
-    merge.password = DEFAULT_PASSWORD;
-  }
-  if (merge.password === "rifa2026") {
-    merge.password = DEFAULT_PASSWORD;
-  }
+  // La contraseña ya no vive en el estado: el acceso lo controla Supabase Auth.
+  delete merge.password;
   merge.config = { ...estadoInicial.config, ...(merge.config || {}) };
   merge.config.min = Number.isInteger(Number(merge.config.min)) ? Number(merge.config.min) : 1;
   merge.config.max = Number.isInteger(Number(merge.config.max)) ? Number(merge.config.max) : 2840;
@@ -124,16 +121,158 @@ function cargarEstado() {
   }
 }
 
+// ---------- Autenticación de administración (Supabase Auth) ----------
+
+function leerSesion() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    const sesion = raw ? JSON.parse(raw) : null;
+    return sesion && sesion.access_token && sesion.refresh_token ? sesion : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function guardarSesion(datos) {
+  const expiresAt = Number(datos.expires_at) ||
+    Math.floor(Date.now() / 1000) + (Number(datos.expires_in) || 3600);
+  const sesion = {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token,
+    expires_at: expiresAt,
+    user: datos.user ? { id: datos.user.id, email: datos.user.email } : null
+  };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+  return sesion;
+}
+
+function borrarSesion() {
+  sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem("rifa_admin_ok");
+}
+
+function adminAutenticado() {
+  return leerSesion() !== null;
+}
+
+async function llamarAuth(ruta, { method = "POST", body, token } = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/${ruta}`, {
+    method,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${token || SUPABASE_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let datos = null;
+  try {
+    datos = await respuesta.json();
+  } catch (error) {
+    datos = null;
+  }
+  if (!respuesta.ok) {
+    const mensaje = (datos && (datos.error_description || datos.msg || datos.message || datos.error)) ||
+      `Supabase respondió ${respuesta.status}`;
+    const error = new Error(mensaje);
+    error.status = respuesta.status;
+    error.code = datos && (datos.error_code || datos.error);
+    throw error;
+  }
+  return datos;
+}
+
+// Devuelve un access_token vigente o null si no hay sesión válida.
+async function obtenerTokenAdmin() {
+  const sesion = leerSesion();
+  if (!sesion) return null;
+  const ahora = Math.floor(Date.now() / 1000);
+  if (sesion.expires_at - ahora > 60) return sesion.access_token;
+  try {
+    const datos = await llamarAuth("token?grant_type=refresh_token", {
+      body: { refresh_token: sesion.refresh_token }
+    });
+    return guardarSesion(datos).access_token;
+  } catch (error) {
+    console.warn("La sesión de administración expiró.", error);
+    borrarSesion();
+    mostrarToast("Tu sesión expiró. Vuelve a entrar.");
+    actualizarVistaAdmin();
+    return null;
+  }
+}
+
+async function iniciarSesionAdmin(email, password) {
+  const datos = await llamarAuth("token?grant_type=password", { body: { email, password } });
+  const sesion = guardarSesion(datos);
+  const esAdmin = await verificarAdmin(sesion);
+  if (!esAdmin) {
+    await cerrarSesionRemota(sesion.access_token);
+    borrarSesion();
+    const error = new Error("Esta cuenta no tiene permiso de administración.");
+    error.code = "not_admin";
+    throw error;
+  }
+  return sesion;
+}
+
+// Confirma que el usuario está en public.rifa_admins. Si la tabla aún no existe
+// (proyecto sin configurar), se permite la entrada y la base de datos decidirá al escribir.
+async function verificarAdmin(sesion) {
+  if (!sesion.user || !sesion.user.id) return true;
+  try {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rifa_admins?user_id=eq.${encodeURIComponent(sesion.user.id)}&select=user_id`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${sesion.access_token}` } }
+    );
+    if (respuesta.status === 404) return true;
+    if (!respuesta.ok) return true;
+    const filas = await respuesta.json();
+    return Array.isArray(filas) && filas.length > 0;
+  } catch (error) {
+    return true;
+  }
+}
+
+async function cerrarSesionRemota(token) {
+  if (!token) return;
+  try {
+    await llamarAuth("logout", { token });
+  } catch (error) {
+    console.warn("No se pudo cerrar la sesión en Supabase.", error);
+  }
+}
+
+function urlRetorno() {
+  return `${location.origin}${location.pathname}`;
+}
+
 function guardarEstado() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     mostrarToast("No fue posible guardar los datos en este navegador.");
   }
-  publicarEstadoRemoto();
+  return publicarEstadoRemoto();
 }
 
 async function publicarEstadoRemoto() {
+  const token = await obtenerTokenAdmin();
+  if (!token) {
+    console.warn("Sin sesión de administración: los cambios solo se guardaron en este navegador.");
+    return false;
+  }
+  if (!estadoRemotoCargado && !confirmoSobrescritura) {
+    const seguir = confirm(
+      "No se pudieron leer los datos publicados en este momento. " +
+      "Si continúas, lo que hay en este navegador reemplazará los resultados publicados. ¿Continuar?"
+    );
+    if (!seguir) {
+      mostrarToast("Cambios guardados solo en este navegador. No se publicaron.");
+      return false;
+    }
+    confirmoSobrescritura = true;
+  }
   if (
     state.config &&
     state.config.numPremios === 30 &&
@@ -142,10 +281,10 @@ async function publicarEstadoRemoto() {
     state.ganadores.length < 30
   ) {
     console.warn("Se bloqueó una publicación incompleta: se requieren 30 premios.");
-    return;
+    return false;
   }
   const estadoPublico = structuredClone(state);
-  estadoPublico.password = undefined;
+  delete estadoPublico.password;
   estadoPublico.boletos = Array.isArray(estadoPublico.boletos)
     ? estadoPublico.boletos.map(boleto => ({
         ...boleto,
@@ -165,7 +304,7 @@ async function publicarEstadoRemoto() {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates"
       },
@@ -175,12 +314,33 @@ async function publicarEstadoRemoto() {
         updated_at: new Date().toISOString()
       })
     });
+    if (respuesta.status === 401 || respuesta.status === 403) {
+      mostrarToast("Supabase rechazó el cambio: esta cuenta no tiene permiso para publicar.");
+      return false;
+    }
     if (!respuesta.ok) {
       throw new Error(`Supabase respondió ${respuesta.status}`);
     }
+    estadoRemotoCargado = true;
+    return true;
   } catch (error) {
     console.warn("No se pudo publicar el estado compartido.", error);
+    mostrarToast("No se pudo publicar en línea. Los cambios quedaron en este navegador.");
+    return false;
   }
+}
+
+// El estado remoto no lleva nombres ni teléfonos. Conserva los que existan en este
+// navegador para que administración no los pierda al recargar.
+function conservarDatosPrivados(remoto, local) {
+  if (!local || !Array.isArray(local.boletos)) return remoto;
+  const privados = new Map(local.boletos.map(b => [String(b.id), b]));
+  remoto.boletos = remoto.boletos.map(b => {
+    const previo = privados.get(String(b.id));
+    if (!previo || previo.numeroA !== b.numeroA || previo.numeroB !== b.numeroB) return b;
+    return { ...b, nombre: b.nombre || previo.nombre, telefono: b.telefono || previo.telefono };
+  });
+  return remoto;
 }
 
 async function cargarEstadoRemoto() {
@@ -198,6 +358,7 @@ async function cargarEstadoRemoto() {
       throw new Error(`Supabase respondió ${respuesta.status}`);
     }
     const filas = await respuesta.json();
+    estadoRemotoCargado = true;
     if (
       Array.isArray(filas) &&
       filas.length &&
@@ -205,7 +366,7 @@ async function cargarEstadoRemoto() {
       typeof filas[0].state === "object" &&
       Object.keys(filas[0].state).length > 0
     ) {
-      state = normalizarEstado(filas[0].state);
+      state = conservarDatosPrivados(normalizarEstado(filas[0].state), state);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       return true;
     }
@@ -228,10 +389,15 @@ function mostrarSeccion(name) {
 }
 
 function actualizarVistaAdmin() {
-  const autenticado = sessionStorage.getItem("rifa_admin_ok") === "1";
-  document.getElementById("admin-login").classList.toggle("hidden", autenticado);
-  document.getElementById("admin-panel").classList.toggle("hidden", !autenticado);
-  if (autenticado) {
+  const autenticado = adminAutenticado();
+  const enRecuperacion = Boolean(recuperacionPendiente);
+  document.getElementById("admin-login").classList.toggle("hidden", autenticado || enRecuperacion);
+  document.getElementById("admin-recuperar").classList.toggle("hidden", !enRecuperacion);
+  document.getElementById("admin-panel").classList.toggle("hidden", !autenticado || enRecuperacion);
+  const sesion = leerSesion();
+  const etiqueta = document.getElementById("admin-usuario");
+  if (etiqueta) etiqueta.textContent = sesion && sesion.user && sesion.user.email ? sesion.user.email : "";
+  if (autenticado && !enRecuperacion) {
     renderTablaBoletos();
     cargarCamposConfiguracion();
   }
@@ -264,34 +430,109 @@ function renderEstadoSorteo() {
   estado.classList.add("hidden");
 }
 
-document.getElementById("form-login").addEventListener("submit", event => {
+let recuperacionPendiente = null;
+
+function bloquearBoton(form, bloqueado) {
+  const boton = form.querySelector('button[type="submit"]');
+  if (boton) boton.disabled = bloqueado;
+}
+
+document.getElementById("form-login").addEventListener("submit", async event => {
   event.preventDefault();
+  const form = event.currentTarget;
+  const email = document.getElementById("admin-email").value.trim();
   const password = document.getElementById("admin-password").value;
-  if (password === state.password || password === DEFAULT_PASSWORD) {
-    if (password === DEFAULT_PASSWORD) {
-      state.password = DEFAULT_PASSWORD;
-      guardarEstado();
-    }
-    sessionStorage.setItem("rifa_admin_ok", "1");
+  if (!email || !password) return mostrarToast("Escribe tu correo y contraseña.");
+  bloquearBoton(form, true);
+  try {
+    await iniciarSesionAdmin(email, password);
     document.getElementById("admin-password").value = "";
     actualizarVistaAdmin();
-  } else {
-    mostrarToast("Contraseña incorrecta.");
+    const cargado = await cargarEstadoRemoto();
+    if (cargado) {
+      renderIdentidad();
+      actualizarVistaAdmin();
+    }
+  } catch (error) {
+    if (error.code === "not_admin") {
+      mostrarToast(error.message);
+    } else if (error.status === 400 || error.code === "invalid_credentials") {
+      mostrarToast("Correo o contraseña incorrectos.");
+    } else {
+      mostrarToast("No se pudo conectar con el servidor de acceso.");
+    }
+  } finally {
+    bloquearBoton(form, false);
   }
 });
 
-function cerrarSesionAdmin() {
-  sessionStorage.removeItem("rifa_admin_ok");
+async function cerrarSesionAdmin() {
+  const sesion = leerSesion();
+  borrarSesion();
+  await cerrarSesionRemota(sesion && sesion.access_token);
   mostrarSeccion("consulta");
 }
 
-function restablecerPassword() {
-  if (!confirm("¿Restablecer la contraseña de administración a RifaLCRR1972?")) return;
-  state.password = DEFAULT_PASSWORD;
-  guardarEstado();
-  document.getElementById("admin-password").value = "";
-  mostrarToast("Contraseña restablecida a RifaLCRR1972.");
+async function enviarRecuperacion() {
+  const email = document.getElementById("admin-email").value.trim();
+  if (!email) return mostrarToast("Escribe tu correo y vuelve a pulsar «¿Olvidaste tu contraseña?».");
+  try {
+    await llamarAuth(`recover?redirect_to=${encodeURIComponent(urlRetorno())}`, {
+      body: { email }
+    });
+  } catch (error) {
+    console.warn("No se pudo solicitar la recuperación.", error);
+  }
+  // Mismo mensaje siempre, para no revelar qué correos existen.
+  mostrarToast("Si el correo es de administración, recibirás un enlace para crear una contraseña nueva.");
 }
+
+// Supabase regresa del enlace de recuperación con los tokens en el hash de la URL.
+function detectarRecuperacion() {
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (hash.get("error_description")) {
+    mostrarToast("El enlace de recuperación no es válido o ya expiró.");
+    history.replaceState(null, "", urlRetorno());
+    return false;
+  }
+  if (hash.get("type") !== "recovery" || !hash.get("access_token")) return false;
+  recuperacionPendiente = {
+    access_token: hash.get("access_token"),
+    refresh_token: hash.get("refresh_token"),
+    expires_at: hash.get("expires_at"),
+    expires_in: hash.get("expires_in")
+  };
+  history.replaceState(null, "", urlRetorno());
+  return true;
+}
+
+document.getElementById("form-recuperar").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const nueva = document.getElementById("recuperar-password").value;
+  const confirmar = document.getElementById("recuperar-password-2").value;
+  if (nueva.length < 10) return mostrarToast("Usa al menos 10 caracteres.");
+  if (nueva !== confirmar) return mostrarToast("Las contraseñas no coinciden.");
+  bloquearBoton(form, true);
+  try {
+    const usuario = await llamarAuth("user", {
+      method: "PUT",
+      token: recuperacionPendiente.access_token,
+      body: { password: nueva }
+    });
+    guardarSesion({ ...recuperacionPendiente, user: usuario });
+    recuperacionPendiente = null;
+    form.reset();
+    mostrarToast("Contraseña actualizada.");
+    actualizarVistaAdmin();
+  } catch (error) {
+    mostrarToast(error.code === "same_password"
+      ? "La contraseña nueva debe ser distinta de la anterior."
+      : "No se pudo cambiar la contraseña. Pide un enlace nuevo.");
+  } finally {
+    bloquearBoton(form, false);
+  }
+});
 
 function renderTablaBoletos() {
   const tbody = document.getElementById("tabla-boletos");
@@ -862,6 +1103,9 @@ function consultarBoleto() {
 function renderListaGanadores() {
   const contenedor = document.getElementById("lista-ganadores");
   const info = document.getElementById("info-sorteo");
+  // La página pública ya no muestra la lista de ganadores; si la sección no
+  // existe en index.html no hay nada que pintar y no debe romper el resto.
+  if (!contenedor || !info) return;
   if (!state.ganadores.length) {
     contenedor.innerHTML = `<p class="muted" style="text-align:center;padding:40px 0">Los resultados se publicarán después del sorteo oficial.</p>`;
     info.textContent = state.nombreSorteo ? `Sorteo: ${state.nombreSorteo}` : "Aún no se han cargado resultados.";
@@ -917,8 +1161,8 @@ function guardarConfiguracion() {
   const lista = document.getElementById("cfg-lista-premios").value.split("\n").map(v => v.trim()).filter(Boolean);
   state.nombreColegio = document.getElementById("cfg-nombre").value.trim() || "Liceo Carl Ransom Rogers";
   state.config = { min, max, numPremios, premios: lista.length ? lista : Array.from({ length: numPremios }, (_, i) => `Premio ${i + 1}`) };
-  const nuevaPassword = document.getElementById("cfg-password").value.trim();
-  if (nuevaPassword) state.password = nuevaPassword;
+  const nuevaPassword = document.getElementById("cfg-password").value;
+  if (nuevaPassword) cambiarPasswordAdmin(nuevaPassword);
   recalcularRangoResultados();
   state.ganadores = [];
   guardarEstado();
@@ -926,6 +1170,23 @@ function guardarConfiguracion() {
   renderIdentidad();
   renderEstadoSorteo();
   mostrarToast("Configuración guardada.");
+}
+
+async function cambiarPasswordAdmin(nueva) {
+  if (nueva.length < 10) return mostrarToast("La contraseña nueva debe tener al menos 10 caracteres.");
+  const token = await obtenerTokenAdmin();
+  if (!token) return;
+  try {
+    await llamarAuth("user", { method: "PUT", token, body: { password: nueva } });
+    document.getElementById("cfg-password").value = "";
+    mostrarToast("Contraseña de administración actualizada en todos los equipos.");
+  } catch (error) {
+    mostrarToast(error.code === "same_password"
+      ? "La contraseña nueva debe ser distinta de la actual."
+      : error.code === "reauthentication_needed"
+        ? "Supabase pide volver a entrar antes de cambiar la contraseña."
+        : "No se pudo cambiar la contraseña.");
+  }
 }
 
 function exportarTodo() {
@@ -958,12 +1219,11 @@ function importarTodo(event) {
   reader.readAsText(file, "UTF-8");
 }
 
-function resetearTodo() {
+async function resetearTodo() {
   if (!confirm("¿Eliminar todos los boletos, resultados, ganadores y configuración?")) return;
   localStorage.removeItem(STORAGE_KEY);
-  sessionStorage.removeItem("rifa_admin_ok");
   state = structuredClone(estadoInicial);
-  guardarEstado();
+  await guardarEstado();
   location.reload();
 }
 
@@ -981,10 +1241,10 @@ function descargarArchivo(content, filename, type) {
 
 async function init() {
   cargarEstado();
-  const tieneEstadoRemoto = await cargarEstadoRemoto();
-  if (!tieneEstadoRemoto) {
-    publicarEstadoRemoto();
-  }
+  sessionStorage.removeItem("rifa_admin_ok");
+  const vieneDeRecuperacion = detectarRecuperacion();
+  // Solo se lee el estado compartido; los visitantes nunca publican.
+  await cargarEstadoRemoto();
   if (
     state.resultadosLoteria.length &&
     state.boletos.length &&
@@ -997,7 +1257,7 @@ async function init() {
   renderTablaBoletos();
   renderListaGanadores();
   renderResultadoCalculo();
-  mostrarSeccion("consulta");
+  mostrarSeccion(vieneDeRecuperacion ? "admin" : "consulta");
 
   const inputFolio = document.getElementById("input-folio");
   inputFolio.addEventListener("input", () => {
@@ -1005,8 +1265,7 @@ async function init() {
   });
 
   setInterval(async () => {
-    const autenticado = sessionStorage.getItem("rifa_admin_ok") === "1";
-    if (autenticado) return;
+    if (adminAutenticado() || recuperacionPendiente) return;
     const cargado = await cargarEstadoRemoto();
     if (cargado) {
       renderIdentidad();

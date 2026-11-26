@@ -59,11 +59,15 @@
     <section id="section-admin" class="section hidden">
       <div id="admin-login" class="login-card card">
         <p class="eyebrow">Acceso restringido</p><h1>Administración</h1>
-        <form id="form-login"><label for="admin-password">Contraseña</label><input id="admin-password" type="password" autocomplete="current-password"><button class="button button--primary" type="submit">Entrar</button></form>
-        <button class="button button--ghost reset-password-button" type="button" onclick="restablecerPassword()">Restablecer contraseña</button>
+        <form id="form-login"><label for="admin-email">Correo</label><input id="admin-email" type="email" autocomplete="username" required><label for="admin-password">Contraseña</label><input id="admin-password" type="password" autocomplete="current-password" required><button class="button button--primary" type="submit">Entrar</button></form>
+        <button class="button button--ghost reset-password-button" type="button" onclick="enviarRecuperacion()">¿Olvidaste tu contraseña?</button>
+      </div>
+      <div id="admin-recuperar" class="login-card card hidden">
+        <p class="eyebrow">Recuperar acceso</p><h1>Contraseña nueva</h1>
+        <form id="form-recuperar"><label for="recuperar-password">Contraseña nueva</label><input id="recuperar-password" type="password" autocomplete="new-password" minlength="10" required><label for="recuperar-password-2">Confirmar contraseña</label><input id="recuperar-password-2" type="password" autocomplete="new-password" minlength="10" required><button class="button button--primary" type="submit">Guardar contraseña</button></form>
       </div>
       <div id="admin-panel" class="hidden">
-        <div class="admin-heading"><div><p class="eyebrow">Panel de administración</p><h1>Gestión de la rifa</h1></div><button class="button button--ghost" type="button" onclick="cerrarSesionAdmin()">Cerrar sesión</button></div>
+        <div class="admin-heading"><div><p class="eyebrow">Panel de administración</p><h1>Gestión de la rifa</h1><p id="admin-usuario" class="muted"></p></div><button class="button button--ghost" type="button" onclick="cerrarSesionAdmin()">Cerrar sesión</button></div>
         <div class="tabs card" role="tablist">
           <button class="tab active" id="tab-boletos" type="button" role="tab" onclick="mostrarTabAdmin('boletos')">Boletos vendidos</button>
           <button class="tab" id="tab-resultados" type="button" role="tab" onclick="mostrarTabAdmin('resultados')">Resultados</button>
@@ -102,7 +106,7 @@
             <div><label for="cfg-min">Número mínimo</label><input id="cfg-min" type="number" min="0" max="9999"></div>
             <div><label for="cfg-max">Número máximo</label><input id="cfg-max" type="number" min="0" max="9999"></div>
             <div><label for="cfg-premios">Cantidad de premios</label><input id="cfg-premios" type="number" min="1" max="500"></div>
-            <div><label for="cfg-password">Nueva contraseña</label><input id="cfg-password" type="password" placeholder="Vacía para no cambiar"></div>
+            <div><label for="cfg-password">Nueva contraseña</label><input id="cfg-password" type="password" autocomplete="new-password" minlength="10" placeholder="Vacía para no cambiar"></div>
             <div><label for="file-logo">Logo del colegio</label><input id="file-logo" type="file" accept="image/png,image/jpeg,image/webp"></div>
           </div>
           <label for="cfg-lista-premios">Lista de premios, uno por línea</label><textarea id="cfg-lista-premios" rows="8"></textarea>
@@ -134,6 +138,6 @@
     </form>
   </dialog>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script src="app.js?v=30-premios-final"></script>
+  <script src="app.js?v=correcciones-2026-12"></script>
 </body>
 </html>
